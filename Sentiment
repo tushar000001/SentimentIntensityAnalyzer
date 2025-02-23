@@ -1,76 +1,34 @@
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
+# First, install NLTK if you haven't already
+# pip install nltk
+
 import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-try:
-    nltk.data.find('vader_lexicon/vader_lexicon.zip')
-except LookupError:
-    nltk.download('vader_lexicon')
+# Download the VADER lexicon (only needed for the first time)
+nltk.download('vader_lexicon')
 
-def analyze_flipkart_product_sentiment(url, output_file="sentiment_results.xlsx"):
-    """
-    Scrapes reviews from a Flipkart product page, performs sentiment analysis, and saves the results to an Excel file.
+# Initialize the Sentiment Intensity Analyzer
+analyzer = SentimentIntensityAnalyzer()
 
-    Args:
-        url (str): The URL of the Flipkart product page.
-        output_file (str, optional): The name of the Excel file to save the results. Defaults to "sentiment_results.xlsx".
+def analyze_sentiment(text):
+    # Get sentiment scores
+    scores = analyzer.polarity_scores(text)
+    
+    # Interpret the scores
+    if scores['compound'] >= 0.05:
+        sentiment = "Positive"
+    elif scores['compound'] <= -0.05:
+        sentiment = "Negative"
+    else:
+        sentiment = "Neutral"
+    
+    return sentiment, scores
 
-    Returns:
-        None. Prints messages indicating success or errors.
-    """
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Check for bad status codes
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        reviews_container = soup.find('div', {'class': '_1YokD2 _3Mn1Gg col-9-12'})  # Correct class names
-
-        if not reviews_container:
-            print("Reviews container not found. Check the website structure or URL.")
-            return
-
-        review_elements = reviews_container.find_all('div', {'class': 't-ZTKy'}) # Correct class name
-
-        reviews = []
-        for review_element in review_elements:
-            review_text = review_element.text.strip()
-            reviews.append(review_text)
-
-        df = pd.DataFrame({'review': reviews})
-
-        if df.empty:  # Check if any reviews were scraped
-            print("No reviews found on the page.")
-            return
-
-        sid = SentimentIntensityAnalyzer()
-
-        def analyze_sentiment(text):
-            if not isinstance(text, str) or not text:  # Handle empty reviews
-                return "neutral"
-            scores = sid.polarity_scores(text)
-            compound_score = scores['compound']
-            if compound_score >= 0.05:
-                return "positive"
-            elif compound_score <= -0.05:
-                return "negative"
-            else:
-                return "neutral"
-
-        df['sentiment'] = df['review'].apply(analyze_sentiment)
-
-        df.to_excel(output_file, index=False)
-        print(f"Sentiment analysis complete. Results saved to {output_file}")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching URL: {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-
+# Example usage
 if __name__ == "__main__":
-    product_url = "https://www.flipkart.com/hamtex-polycotton-double-bed-cover/product-reviews/itma5c9f08efe504?pid=BCVG2ZGSDZ3WSGTF&lid=LSTBCVG2ZGSDZ3WSGTFDBZ9IO&marketplace=FLIPKART"  # Example URL
-    analyze_flipkart_product_sentiment(product_url)  # Analyze and save to default file
-    # Or specify a custom file name:
-    # analyze_flipkart_product_sentiment(product_url, "my_product_sentiment.xlsx")
+    text = "I love using SentimentIntensityAnalyzer! It's really helpful."
+    sentiment, scores = analyze_sentiment(text)
+    
+    print(f"Text: {text}")
+    print(f"Sentiment: {sentiment}")
+    print(f"Scores: {scores}")
